@@ -1,13 +1,13 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
+using static UnityEngine.Rendering.DebugUI.Table;
 
 public class Graph : MonoBehaviour
 {
     [SerializeField] private Transform pointPrefab;
     [SerializeField, Range(10, 100)] private int resolution = 10;
-    [SerializeField, Range(0, 2)] private int function;
+    [SerializeField] FunctionLibrary.FunctionName function;
 
     private Transform[] points;
     // Start is called before the first frame update
@@ -15,7 +15,7 @@ public class Graph : MonoBehaviour
 
     private void Awake()
     {
-        points = new Transform[resolution];
+        points = new Transform[resolution * resolution];
         float step = 2f / resolution;
         var position = Vector3.zero;
         var scale = Vector3.one * step;
@@ -30,11 +30,19 @@ public class Graph : MonoBehaviour
 
         //下面第一行原来这么写的：for (int i = 0; i < resolution; i++),
         //其实和现在没啥区别，因为points array的长度就是resolution
-        for (int i = 0; i < points.Length; i++)
+        for (int i = 0, x = 0, z = 0; i < points.Length; i++, x++)
         {
+            if (x == resolution)
+            {
+                x = 0;//Each time we finish a row we have to reset x to zero.
+                z += 1;
+                //This variable must not be incremented each iteration.
+                //Instead, it only increments when we move on to the next row
+            }
             Transform point = Instantiate(pointPrefab);
             points[i] = point;
-            position.x = (i + 0.5f) * step - 1f;
+            position.x = (x + 0.5f) * step - 1f;
+            position.z = (z + 0.5f) * step - 1f;
             point.localPosition = position;
             point.localScale = scale;
             point.SetParent(transform, false);
@@ -49,24 +57,26 @@ public class Graph : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        FunctionLibrary.Function f = FunctionLibrary.GetFunction(function);
         float time = Time.time;
         for (int i = 0; i < points.Length; i++)
         {
             Transform point = points[i];
             Vector3 position = point.localPosition;
-            if (function == 0)
-            {
-                position.y = FunctionLibrary.Wave(position.x, time);
-            }
-            else if (function == 1)
-            {
-                position.y = FunctionLibrary.MultiWave(position.x, time);
-            }
-            else if (function == 2)
-            {
-                position.y = FunctionLibrary.Ripple(position.x, time);
-            }
+            //if (function == 0)
+            //{
+            //    position.y = FunctionLibrary.Wave(position.x, time);
+            //}
+            //else if (function == 1)
+            //{
+            //    position.y = FunctionLibrary.MultiWave(position.x, time);
+            //}
+            //else if (function == 2)
+            //{
+            //    position.y = FunctionLibrary.Ripple(position.x, time);
+            //}
 
+            position.y = f(position.x, position.z, time);
             point.localPosition = position;
             //position.y = Mathf.Sin(Mathf.PI * position.x);
             // scale the time by π as well the function will repeat every two seconds.
